@@ -96,9 +96,9 @@ int main(int argc, char * argv[]) {
 
 
 void multiply(int n, double ** a, double ** b, double ** c) {
-
 	int i, j, k;
-//	Naive Matrix Multiplication
+
+	//	Naive Matrix Multiplication
 	for (i = 0; i < n; i++) {
 		for (j = 0; j < n; j++) {
 			for (k = 0; k < n; k++) {

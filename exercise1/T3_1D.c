@@ -12,18 +12,17 @@ void get_clockres(struct timespec* t) {
     clock_getres(CLOCK_MONOTONIC, t);
 }
 
+int getIndex(int size, int rowNumber, int colNumber) {
+	return size * rowNumber + colNumber;
+}
 
 void multiply(int n, double * a, double * b, double * c);
-
-
 void fillMatrix(int n, double * matrix);
 
 void printMatrixByRows(int n, double * matrix);
 void printMatrixByRowsInFile(int n, double * matrix, char filename[]);
 
 double * createMatrix(int n);
-
-
 
 int main(int argc, char * argv[]) {
 	unsigned int mSize = 0, runs, i;
@@ -57,7 +56,7 @@ int main(int argc, char * argv[]) {
 	while (runs < 5) {
 
 	    for (i = 0; i < mSize*mSize; i++) {
-	          // TODO initialize matrix c
+	            c[i] = 0;
 	    }
 
 	   	get_time(&t1);
@@ -89,41 +88,89 @@ int main(int argc, char * argv[]) {
 
 	printf ("Mean execution time: %f\n", (time/runs));
 
-  // TODO free allocated matrices a,b, and c
-
+	free(a);
+	free(b);
+	free(c);
 }
 
 
 void multiply(int n, double * a, double * b, double * c) {
-
 	int i, j, k;
-//	TODO Matrix Multiplication
 
-
-
+	//	Naive Matrix Multiplication
+	for (i = 0; i < n; i++) {
+		for (j = 0; j < n; j++) {
+			for (k = 0; k < n; k++) {
+				c[n * i + j] += a[n * i + k] * b[n * k + j];
+			}
+		}
+	}
 }
 
 double * createMatrix(int n) {
+	int i;
 
-// TODO allocate matrix as 1 dimension array
-  	return 0; // TODO return the allocated matrix 
+	double * matrix = (double *) calloc(n*n, sizeof(double));
+
+	return matrix;
 }
 
 void fillMatrix(int n, double * matrix) {
+	int i;
 
-  // TODO fill matrix with random numbers
+	for (i = 0; i < n*n; i++) {
+		matrix[i] = (rand()%10) - 5; //between -5 and 4
+	}
 }
 
 
 void printMatrixByRows(int n, double * matrix) {
+	int i, j;
 
- // TODO print matrix
+	printf("{");
 
+	for (i = 0; i < n; i++) {
+		printf("[");
 
+		for (j = 0; j < n; j++) {
+			printf("%d", (int) matrix[getIndex(n, i, j)]);
+
+			if (j != n-1)
+				printf(",");
+			else
+				printf("]");
+		}
+
+		if (i != n-1) {
+			printf(",\n");x`
+		}
+	}
+
+	printf("}\n");
 }
 
 void printMatrixByRowsInFile(int n, double * matrix, char filename[]) {
+	int i, j;
 
-  // TODO print matrix in file
+	FILE *fp = fopen(filename, "w");
 
+	fprintf(fp, "{");
+
+	for (i = 0; i < n; i++) {
+		fprintf(fp, "[");
+
+		for (j = 0; j < n; j++) {
+			fprintf(fp, "%d",(int) matrix[getIndex(n, i, j)]);
+			if (j != n-1)
+				fprintf(fp, ",");
+			else
+				fprintf(fp, "]");
+		}
+
+		if (i != n-1)
+			fprintf(fp, ",\n");
+	}
+
+	fprintf(fp, "}\n");
+	fclose(fp);
 }
