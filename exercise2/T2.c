@@ -2,7 +2,7 @@
 #include <stdlib.h>
 #include <time.h>
 #include <ctype.h>
-
+#define MIN(a,b) ((a) < (b) ? a : b)
 
 void get_time(struct timespec* t) {
     clock_gettime(CLOCK_MONOTONIC, t);
@@ -12,28 +12,34 @@ void get_clockres(struct timespec* t) {
     clock_getres(CLOCK_MONOTONIC, t);
 }
 
-int getIndex(int size, int rowNumber, int colNumber) {
-	return size * rowNumber + colNumber;
-}
 
 void multiply(int n, double * a, double * b, double * c);
-void fillMatrix(int n, double * matrix);
 
+
+void blockMultiply(int n, int bn, double * a, double * b, double * c);
+
+void fillMatrix(int n, double * matrix);
+void fillMatrix_upper(int n, double * matrix);
 void printMatrixByRows(int n, double * matrix);
 void printMatrixByRowsInFile(int n, double * matrix, char filename[]);
 
 double * createMatrix(int n);
 
 int main(int argc, char * argv[]) {
-	unsigned int mSize = 0, runs, i;
+	unsigned int mSize = 0, opt = 0, runs, i;
 	struct timespec t1, t2, dt;
 	double time, flops, gFlops;
 	double * a, * b, * c;
 
     if (argc == 2 && isdigit(argv[1][0])) {
         mSize = atoi(argv[1]);
+    }
+    else if(argc == 3 && isdigit(argv[1][0]) && isdigit(argv[2][0]))
+    {
+      mSize = atoi(argv[1]);
+      opt   = atoi(argv[2]);
     }else {
-        printf("USAGE\n   %s [SIZE] \n", argv[0]);
+        printf("USAGE\n   %s [SIZE] [opt]\n", argv[0]);
         return 0;
     }
 
@@ -44,24 +50,31 @@ int main(int argc, char * argv[]) {
 	b = (double*)createMatrix(mSize);
 	c = (double*)createMatrix(mSize);
 
-	fillMatrix(mSize, a);
+	fillMatrix_upper(mSize, a);
 	fillMatrix(mSize, b);
 
 	flops = (double)mSize * (double)mSize * (double)mSize * 2.0;
 
-	printf("Starting benchmark with mSize = %d.\n",mSize);
+	printf("Starting benchmark with mSize = %d and opt = %d.\n",mSize,opt);
 
 	runs = time = 0;
 
-	while (runs < 5) {
+	while (runs < 10) {
 
 	    for (i = 0; i < mSize*mSize; i++) {
 	            c[i] = 0;
 	    }
 
-	   	get_time(&t1);
+		get_time(&t1);
 
-	    multiply(mSize, a, b, c);
+	    if (opt == 0)
+	        multiply(mSize, a, b, c);
+	    else
+      {
+        
+        blockMultiply(mSize, opt, a, b, c);
+      }
+
 
 	    get_time(&t2);
 
@@ -95,32 +108,95 @@ int main(int argc, char * argv[]) {
 
 
 void multiply(int n, double * a, double * b, double * c) {
-	int i, j, k;
 
-	//	Naive Matrix Multiplication
-	for (i = 0; i < n; i++) {
-		for (j = 0; j < n; j++) {
-			for (k = 0; k < n; k++) {
-				c[n * i + j] += a[n * i + k] * b[n * k + j];
+	#pragma omp parallel
+	{
+		 /* Obtain thread number */
+		int tid = omp_get_thread_num();
+
+		/* Only master thread does this */
+		if (tid == 0) 
+		{
+			int nthreads = omp_get_num_threads();
+			printf("Number of threads = %d\n", nthreads);
+		}
+
+		#pragma omp for schedule(guided)
+		for (int i = 0; i < n; i++) {
+			for (int j = 0; j < n; j++) {
+				for (int k = 0; k < n; k++) {
+					c[i*n+j] += a[i*n+k] * b[k*n+j];
+				}
 			}
+		}
+	}
+
+}
+
+//	Optimized Blocked Matrix Multiplication
+void blockMultiply(int n, int bn, double * a, double * b, double * c) {
+	#pragma omp parallel 
+	{
+
+		 /* Obtain thread number */
+		int tid = omp_get_thread_num();
+
+		/* Only master thread does this */
+		if (tid == 0) 
+		{
+			int nthreads = omp_get_num_threads();
+			printf("Number of threads = %d\n", nthreads);
+		}
+
+		#pragma omp for schedule(guided)
+		for (int ii = 0; ii < n; ii +=bn) {
+			for (int jj = 0; jj < n; jj += bn) {
+				for (int i = ii; i < MIN(ii+bn,n); i++) {
+					for (int j = jj; j < MIN(jj+bn,n); j++) {
+						for (int k = 0; k < n; k++) {
+							c[i*n+j] += a[i*n+k] * b[k*n+j];
+						}
+					}
+				}
+			}
+
 		}
 	}
 }
 
+
 double * createMatrix(int n) {
 	int i;
-
-	double * matrix = (double *) calloc(n*n, sizeof(double));
-
+	double * matrix = (double*) calloc(n*n,sizeof(double));
 	return matrix;
 }
 
 void fillMatrix(int n, double * matrix) {
 	int i;
-
 	for (i = 0; i < n*n; i++) {
 		matrix[i] = (rand()%10) - 5; //between -5 and 4
 	}
+}
+
+
+void fillMatrix_upper(int n, double * matrix) {
+    int i;
+	int line = 0;
+
+    for (i = 0; i < n*n; i += n)
+    {
+        // Fills line with double in triangular fashion
+		for (int j = 0; j < n - line; j++) {
+			matrix[i + j] = (rand()%10) - 5;
+		}
+
+        // Fills remaining cells with 0
+		for (int j = n - line; j < n; j++) {
+			matrix[i + j] = 0;
+		}
+
+		line += 1;
+    }
 }
 
 
@@ -128,49 +204,39 @@ void printMatrixByRows(int n, double * matrix) {
 	int i, j;
 
 	printf("{");
-
 	for (i = 0; i < n; i++) {
 		printf("[");
-
 		for (j = 0; j < n; j++) {
-			printf("%d", (int) matrix[getIndex(n, i, j)]);
-
+			printf("%d",(int)matrix[i*n+j]);
 			if (j != n-1)
 				printf(",");
 			else
 				printf("]");
 		}
-
-		if (i != n-1) {
+		if (i != n-1)
 			printf(",\n");
-		}
 	}
-
 	printf("}\n");
 }
 
-void printMatrixByRowsInFile(int n, double * matrix, char filename[]) {
+void printMatrixByRowsInFile(int n, double *matrix, char filename[]) {
 	int i, j;
 
 	FILE *fp = fopen(filename, "w");
 
 	fprintf(fp, "{");
-
 	for (i = 0; i < n; i++) {
 		fprintf(fp, "[");
-
 		for (j = 0; j < n; j++) {
-			fprintf(fp, "%d",(int) matrix[getIndex(n, i, j)]);
+			fprintf(fp, "%d",(int)matrix[i*n+j]);
 			if (j != n-1)
 				fprintf(fp, ",");
 			else
 				fprintf(fp, "]");
 		}
-
 		if (i != n-1)
 			fprintf(fp, ",\n");
 	}
-
 	fprintf(fp, "}\n");
 	fclose(fp);
 }

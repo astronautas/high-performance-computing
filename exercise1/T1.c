@@ -23,11 +23,13 @@ void printMatrixByRowsInFile(int n, double ** matrix, char filename[]);
 
 double ** createMatrix(int n);
 
+double ** transpose(double ** source, int N);
+
 int main(int argc, char * argv[]) {
 	unsigned int mSize = 0, opt = 0, runs, i;
 	struct timespec t1, t2, dt;
 	double time, flops, gFlops;
-	double ** a, ** b, ** c;
+	double ** a, ** b, ** c, ** b2;
 
     if (argc == 2 && isdigit(argv[1][0])) {
         mSize = atoi(argv[1]);
@@ -36,6 +38,10 @@ int main(int argc, char * argv[]) {
     {
       mSize = atoi(argv[1]);
       opt   = atoi(argv[2]);
+	  
+	  if (opt != 0 && mSize % opt != 0) {
+		  printf("Block (tile) size should be a divisor of the matrix size.");
+	  }
     }else {
         printf("USAGE\n   %s [SIZE] [opt]\n", argv[0]);
         return 0;
@@ -57,10 +63,10 @@ int main(int argc, char * argv[]) {
 
 	runs = time = 0;
 
-	while (runs < 5) {
+	while (runs < 50) {
 
 	    for (i = 0; i < mSize*mSize; i++) {
-	            c[0][i] = 0;
+	        c[0][i] = 0;
 	    }
 
 		get_time(&t1);
@@ -71,7 +77,6 @@ int main(int argc, char * argv[]) {
 		{
 			cache_aware_multiply(mSize, opt, a, b, c);
 		}
-
 
 	    get_time(&t2);
 
@@ -90,11 +95,7 @@ int main(int argc, char * argv[]) {
 	gFlops = ((flops/1073741824.0)/time)*runs;
 	printf("MATRIX SIZE: %i, GFLOPS: %f, RUNS: %i\n",mSize, gFlops, runs);
 
-  /* You can use either
-  printMatrixByRows(mSize, c);
-  or
-  printMatrixByRowsInFile(mSize, c, "asd.txt");
-  to verify your implementation */
+  	//printMatrixByRows(mSize, c);
 
 	printf ("Mean execution time: %f\n", (time/runs));
 
@@ -114,27 +115,40 @@ void multiply(int n, double ** a, double ** b, double ** c) {
 			}
 		}
 	}
-
 }
 
 void cache_aware_multiply (int n, int blockSize, double ** a, double ** b, double ** c) {
-	int i, j, dot, blockRow, blockCol, k1, tmp;
-
+	int i, j, k, blockRow, blockCol;
+	
 	for (i = 0; i < n; i += blockSize) {
 		for (j = 0; j < n; j += blockSize) {
 			for (blockRow = i; blockRow < i + blockSize; blockRow++) {
 				for (blockCol = j; blockCol < j + blockSize; blockCol++) {
-					tmp = 0;
+					double tmp = 0;
 
-					for (dot = 0; dot < n; dot++) {
-						tmp += a[dot][i] + b[j][dot];
+					for (k = 0; k < n; k++) {
+						tmp += a[blockRow][k] * b[k][blockCol];
 					}
 
-					c[i][j] = tmp;
+					c[blockRow][blockCol] = tmp;
 				}
 			}
 		}
 	}
+}
+
+double ** transpose(double ** source, int N) {
+	int i, j;
+
+	double ** destination = (double**)createMatrix(N);
+	
+	for (i = 0; i < N; i++) {
+		for (j = 0; j < N; j++) {
+			destination[j][i] = source[i][j];
+		}
+	}
+
+	return destination;
 }
 
 double ** createMatrix(int n) {

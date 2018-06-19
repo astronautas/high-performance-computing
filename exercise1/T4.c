@@ -11,6 +11,7 @@ void get_clockres(struct timespec* t) {
     clock_getres(CLOCK_MONOTONIC, t);
 }
 
+void multiply_non_vectorizable(int n, double ** a, double ** b, double ** c);
 void multiply(int n, double ** a, double ** b, double ** c);
 
 void fillMatrix(int n, double ** matrix);
@@ -21,15 +22,19 @@ void printMatrixByRowsInFile(int n, double ** matrix, char filename[]);
 double ** createMatrix(int n);
 
 int main(int argc, char * argv[]) {
-	unsigned int mSize = 0, runs, i, unrollSize;
+	unsigned int mSize = 0, runs, i, option;
 	struct timespec t1, t2, dt;
 	double time, flops, gFlops;
 	double ** a, ** b, ** c;
 
-    if (argc == 2 && isdigit(argv[1][0]))
+    if (argc == 3 && isdigit(argv[1][0]))
     {
       mSize = atoi(argv[1]);
-    } else {
+	  option = atoi(argv[2]);
+    } else if (argc == 2 && isdigit(argv[1][0])) {
+	  mSize = atoi(argv[1]);
+	  option = 0;
+	} else {
         printf("USAGE\n   %s [SIZE]\n", argv[0]);
         return 0;
     }
@@ -58,14 +63,18 @@ int main(int argc, char * argv[]) {
 
 	   	get_time(&t1);
 
-	    multiply(mSize, a, b, c);
+		if (option == 1) {
+	    	multiply(mSize, a, b, c);
+		} else {
+			multiply_non_vectorizable(mSize, a, b, c);
+		}
 
 	    get_time(&t2);
 
 	    if ((t2.tv_nsec - t1.tv_nsec) < 0) {
 	        dt.tv_sec = t2.tv_sec - t1.tv_sec - 1;
 	        dt.tv_nsec = 1000000000 - t1.tv_nsec + t2.tv_nsec;
-	    }else {
+	    } else {
 	        dt.tv_sec = t2.tv_sec - t1.tv_sec;
 	        dt.tv_nsec = t2.tv_nsec - t1.tv_nsec;
 	    }
@@ -86,23 +95,31 @@ int main(int argc, char * argv[]) {
 	free(c[0]);
 }
 
-// Unrolled inner loop for 8 elements
+void multiply_non_vectorizable(int n, double ** a, double ** b, double ** c) {
+	int i, j, k;
+
+	//	Naive Matrix Multiplication
+	for (i = 0; i < n; i++) {
+		for (j = 0; j < n; j++) {
+			for (k = 0; k < n; k++) {
+				c[i][j] += a[i][k] * b[k][j];
+			}
+		}
+	}
+}
+
 void multiply(int n, double ** a, double ** b, double ** c) {
 	int i, j, k;
 
 	for (i = 0; i < n; i++) {
 		for (j = 0; j < n; j++) {
-
-			// Explanaton why the original code could not be optimized
-			// Compiler suspects a possibility of not being able to vectorize
-			// "Read after write issue", as the left side of expression could be aliased by some members of the right side
-			// example scenario: a[i][k] -> c[i][j-1] (a points to c)
-			// in this case, as the c[i][j] += a[i][k] and c[i][j] += a[i][k+1] executed together
-			// a[i][k+1] would read incorrect c[i][j] value as it has to be computed by first iteration first
-			// and then used (so the compiler suspects)
-			// tmp does not point to same memory location because it is created outside the loop
-			// and there are no pointer assignments
-			// https://software.intel.com/sites/default/files/8c/a9/CompilerAutovectorizationGuide.pdf [4.2]
+			// The naive example contains all three data dependencies that prevent vectorization
+			// Read after write, write after read and write after write.
+			// With the provided accumulator local variable, Intel compiler is able to recognize
+			// the operation as reduction, thus vectorizing it.
+			// Sources: 
+			// * https://ofekshilon.com/2012/05/09/a-day-with-vs11-beta-part-2-auto-vectorizer/
+			// * https://software.intel.com/en-us/articles/cdiag15048
 			double tmp = 0;
 
 			for (k = 0; k < n; k++) {

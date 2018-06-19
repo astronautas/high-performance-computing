@@ -1,0 +1,130 @@
+Intel(R) Advisor can now assist with vectorization and show optimization
+  report messages with your source code.
+See "https://software.intel.com/en-us/intel-advisor-xe" for details.
+
+
+Begin optimization report for: multiply_non_vectorizable(int, double **, double **, double **)
+
+    Report from: Interprocedural optimizations [ipo]
+
+INLINE REPORT: (multiply_non_vectorizable(int, double **, double **, double **))
+
+
+    Report from: Loop nest, Vector & Auto-parallelization optimizations [loop, vec, par]
+
+
+LOOP BEGIN at T4.c(102,2)
+   remark #25460: No loop optimizations reported
+
+   LOOP BEGIN at T4.c(103,3)
+      remark #25460: No loop optimizations reported
+
+      LOOP BEGIN at T4.c(104,4)
+         remark #25460: No loop optimizations reported
+      LOOP END
+
+      LOOP BEGIN at T4.c(104,4)
+      <Remainder>
+      LOOP END
+   LOOP END
+LOOP END
+
+    Report from: Code generation optimizations [cg]
+
+T4.c(98,78):remark #34051: REGISTER ALLOCATION : [multiply_non_vectorizable] T4.c:98
+
+    Hardware registers
+        Reserved     :    2[ rsp rip]
+        Available    :   39[ rax rdx rcx rbx rbp rsi rdi r8-r15 mm0-mm7 zmm0-zmm15]
+        Callee-save  :    6[ rbx rbp r12-r15]
+        Assigned     :   16[ rax rdx rcx rbx rbp rsi rdi r8-r11 r14-r15 zmm0-zmm2]
+        
+    Routine temporaries
+        Total         :      43
+            Global    :      22
+            Local     :      21
+        Regenerable   :       3
+        Spilled       :       4
+        
+    Routine stack
+        Variables     :       0 bytes*
+            Reads     :       0 [0.00e+00 ~ 0.0%]
+            Writes    :       0 [0.00e+00 ~ 0.0%]
+        Spills        :      32 bytes*
+            Reads     :       4 [3.60e+00 ~ 0.2%]
+            Writes    :       4 [1.60e+00 ~ 0.1%]
+    
+    Notes
+    
+        *Non-overlapping variables and spills may share stack space,
+         so the total stack size might be less than this.
+    
+
+===========================================================================
+
+Begin optimization report for: multiply(int, double **, double **, double **)
+
+    Report from: Interprocedural optimizations [ipo]
+
+INLINE REPORT: (multiply(int, double **, double **, double **))
+
+
+    Report from: Loop nest, Vector & Auto-parallelization optimizations [loop, vec, par]
+
+
+LOOP BEGIN at T4.c(114,2)
+   remark #25460: No loop optimizations reported
+
+   LOOP BEGIN at T4.c(115,3)
+      remark #25460: No loop optimizations reported
+
+      LOOP BEGIN at T4.c(125,4)
+      <Peeled loop for vectorization>
+      LOOP END
+
+      LOOP BEGIN at T4.c(125,4)
+         remark #15300: LOOP WAS VECTORIZED
+      LOOP END
+
+      LOOP BEGIN at T4.c(125,4)
+      <Alternate Alignment Vectorized Loop>
+      LOOP END
+
+      LOOP BEGIN at T4.c(125,4)
+      <Remainder loop for vectorization>
+      LOOP END
+   LOOP END
+LOOP END
+
+    Report from: Code generation optimizations [cg]
+
+T4.c(111,61):remark #34051: REGISTER ALLOCATION : [multiply] T4.c:111
+
+    Hardware registers
+        Reserved     :    2[ rsp rip]
+        Available    :   39[ rax rdx rcx rbx rbp rsi rdi r8-r15 mm0-mm7 zmm0-zmm15]
+        Callee-save  :    6[ rbx rbp r12-r15]
+        Assigned     :   31[ rax rdx rcx rbx rbp rsi rdi r8-r15 zmm0-zmm15]
+        
+    Routine temporaries
+        Total         :     125
+            Global    :      32
+            Local     :      93
+        Regenerable   :       3
+        Spilled       :       8
+        
+    Routine stack
+        Variables     :       0 bytes*
+            Reads     :       0 [0.00e+00 ~ 0.0%]
+            Writes    :       0 [0.00e+00 ~ 0.0%]
+        Spills        :      64 bytes*
+            Reads     :       8 [3.29e+01 ~ 0.2%]
+            Writes    :       8 [2.94e+01 ~ 0.2%]
+    
+    Notes
+    
+        *Non-overlapping variables and spills may share stack space,
+         so the total stack size might be less than this.
+    
+
+===========================================================================

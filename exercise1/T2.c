@@ -14,7 +14,7 @@ void get_clockres(struct timespec* t) {
 
 
 void multiply_ijk(int n, double ** a, double ** b, double ** c);
-void multiply_xxx(int n, double ** a, double ** b, double ** c);
+void multiply_ikj(int n, double ** a, double ** b, double ** c);
 
 void fillMatrix(int n, double ** matrix);
 
@@ -22,8 +22,6 @@ void printMatrixByRows(int n, double ** matrix);
 void printMatrixByRowsInFile(int n, double ** matrix, char filename[]);
 
 double ** createMatrix(int n);
-
-
 
 int main(int argc, char * argv[]) {
 	unsigned int mSize = 0, order = 0, runs, i;
@@ -67,13 +65,13 @@ int main(int argc, char * argv[]) {
 
 		get_time(&t1);
 
-	    if (order == 0)
+		if (order == 0)
 	        multiply_ijk(mSize, a, b, c);
 	    else
-      {
-        // TODO call your optimized version with the correct parameters
-        multiply_xxx(mSize, a, b, c);
-      }
+		{
+			// TODO call your optimized version with the correct parameters
+			multiply_ikj(mSize, a, b, c);
+		}
 
 	    get_time(&t2);
 
@@ -92,7 +90,7 @@ int main(int argc, char * argv[]) {
 	gFlops = ((flops/1073741824.0)/time)*runs;
 	printf("MATRIX SIZE: %i, GFLOPS: %f, RUNS: %i\n",mSize, gFlops, runs);
 
-  	// printMatrixByRows(mSize, c);
+  	//printMatrixByRows(mSize, c);
 
 	printf ("Mean execution time: %f\n", (time/runs));
 
@@ -117,14 +115,14 @@ void multiply_ijk(int n, double ** a, double ** b, double ** c) {
 
 }
 
-void multiply_xxx(int n, double ** a, double ** b, double ** c) {
+void multiply_ikj(int n, double ** a, double ** b, double ** c) {
 	int i, j, k;
 
 	//	xxx ordering of Matrix Multiplication
 	for (i = 0; i < n; i++) {
-		for (j = 0; j < n; j++) {
-			for (k = 0; k < n; k++) {
-				c[i][k] += a[i][j] * b[j][k];
+		for (k = 0; k < n; k++) {
+			for (j = 0; j < n; j++) {
+				c[i][j] += a[i][k] * b[k][j];
 			}
 		}
 	}
